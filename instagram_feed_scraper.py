@@ -44,7 +44,6 @@ def make_output_path(output_dir: str) -> Path:
 def load_feed(page):
     page.goto("https://www.instagram.com/", wait_until="domcontentloaded")
     human_sleep_ms(WAIT_BETWEEN_SCROLLS_MS)
-
 def collect_posts(page):
     posts = page.evaluate("""
     () => {
@@ -55,7 +54,6 @@ def collect_posts(page):
 
         articles.forEach((article, idx) => {
             let username = null;
-            let caption = null;
             let postUrl = null;
             let timestamp = null;
 
@@ -76,27 +74,28 @@ def collect_posts(page):
                 postUrl = postLink.href;
             }
 
-            // --- Caption ---
+            // --- Text content ---
             const header = article.querySelector("header");
-            const textCandidates = [];
+            const texts = [];
+            const seenText = new Set();
+
             article.querySelectorAll("span, div").forEach(el => {
-                if (header && header.contains(el)) return;
+                if (header && header.contains(el)) return;  // skip header
+                if (el.children.length !== 0) return;        // leaf nodes only
                 const text = el.innerText?.trim();
-                if (text && text.length > 15 && el.children.length === 0) {
-                    textCandidates.push(text);
+                if (text && text.length > 2 && !seenText.has(text)) {
+                    seenText.add(text);
+                    texts.push(text);
                 }
             });
 
-            if (textCandidates.length > 0) {
-                caption = textCandidates.reduce((a, b) => a.length >= b.length ? a : b);
-            }
-
-            if (!caption) {
+            // --- Image alt fallback (e.g. for captionless photo posts) ---
+            if (texts.length === 0) {
                 const imgs = article.querySelectorAll("img");
                 for (const img of imgs) {
                     const alt = img.alt?.trim();
                     if (alt && !alt.includes("profile picture") && alt.length > 10) {
-                        caption = alt;
+                        texts.push(alt);
                         break;
                     }
                 }
@@ -111,7 +110,7 @@ def collect_posts(page):
             const key = postUrl || (username + "_" + idx);
             if (!seen.has(key)) {
                 seen.add(key);
-                results.push({ username, caption, post_url: postUrl, timestamp });
+                results.push({ username, texts, post_url: postUrl, timestamp });
             }
         });
 
