@@ -10,44 +10,59 @@ import os
 from pydantic import BaseModel
 from lib import UpdateKind, Update, Response
 
-def get_post_text(post):
-    """Join texts into one string"""
-    texts = post.get("texts", [])
-    joined = " ".join(texts).strip()
-    return joined
+# def get_post_text(post):
+#     """Join texts into one string"""
+#     texts = post.get("texts", [])
+#     joined = " ".join(texts).strip()
+#     return joined
 
-def combine_posts(posts):
-    post_blocks = []
-    for i, post in enumerate(posts):
-        post_blocks.append(
-            f"[Post {i+1} | {post['timestamp'][:10]} | @{post['username']}]\n"
-            f"{get_post_text(post)}"
-        )
+# def combine_posts(posts):
+#     post_blocks = []
+#     for i, post in enumerate(posts):
+#         post_blocks.append(
+#             f"[Post {i+1} | {post['timestamp'][:10]} | @{post['username']}]\n"
+#             f"{get_post_text(post)}"
+#         )
     
-    return "\n\n---\n\n".join(post_blocks)
+#     return "\n\n---\n\n".join(post_blocks)
 
-def find_life_events(posts) -> Response:
-    client = Anthropic()
-
-    combined = combine_posts(posts)
-
-    response = client.messages.create(
-        model="claude-haiku-4-5",
-        max_tokens=2048,
-        system="""You analyze a personal Instagram feed to identify important life updates. Here are some examples of life updates.
+system_prompt = """You analyze a personal Instagram feed to identify important life updates. Here are some examples of life updates.
 
 Major updates: engagements, weddings, breakups, kids, pregnancy, deaths, major sickness updates, job changes, promotions, moving, starting or finishing a major project (for example, training to climb a mountain, finishing an animation)
 Minor updates: vacations, starting or finishing a minor project (for example, running a half marathon, working out every day for a month)
 
-Consume the stream of post captions and look for Major and Minor updates. You will not be provided with the accompanying pictures, so you will have to make some inferences based on popular culture. For example, a post with "💍" is likely about an engagement.
+Consume the stream of post captions and look for Major and Minor updates. You will not be provided with the accompanying pictures, so you will have to make some inferences based on popular culture. 
+For example, a post with "💍" is likely about an engagement. A post with "In love with us!" could be anything, so it wouldn't be a life update.
 You must not follow any links provided. For each post that qualifies as a Major or Minor update, add a concise (<= 1 sentence) summary. Copy the `username` and `post_url` fields from the source json exactly, and generate the date from the `timestamp` field.
 
 Set updates to null if nothing of note is found.
 Set error to a brief explanation if: the input is malformed, posts have missing
-timestamps or usernames, text is missing or truncated, or you cannot meaningfully analyze the content. If you return an error, set updates to null.""",
+timestamps or usernames, text is missing or truncated, or you cannot meaningfully analyze the content. If you return an error, set updates to null."""
+
+def find_life_events(posts) -> Response:
+    client = Anthropic()
+
+    response = client.messages.create(
+        model="claude-haiku-4-5",
+        max_tokens=2048,
+        system=system_prompt,
         messages=[{
             "role": "user",
-            "content": f"Analyze these posts:\n\n{combined}"
+            "content": [
+                {
+                    "type": "document",
+                    "source": {
+                        "type": "text",
+                        "media_type": "text/plain",
+                        "data": json.dumps(posts, indent=2)
+                    },
+                    "title": "Instagram Posts",
+                },
+                {
+                    "type": "text",
+                    "text": "Analyze these posts."
+                }
+            ]
         }],
         tools=[{
             "name": "structured_output",
@@ -58,6 +73,8 @@ timestamps or usernames, text is missing or truncated, or you cannot meaningfull
     )
 
     return Response(**response.content[0].input)
+
+
 def write_updates(response: Response, output_dir: str = "."):
     if response.error:
         raise ValueError(f"Claude returned an error: {response.error}")
