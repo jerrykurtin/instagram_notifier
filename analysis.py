@@ -28,10 +28,13 @@ def find_life_events(posts) -> Response:
     response = client.messages.parse(
         model="claude-haiku-3",
         max_tokens=2048,
-        system="""You analyze an Instagram feed to identify important life events. Here are some examples of life events.
+        system="""You analyze a personal Instagram feed to identify important life updates. Here are some examples of life updates.
 
 Major updates: engagements, weddings, breakups, kids, pregnancy, deaths, major sickness updates, job changes, promotions, moving, starting or finishing a major project (for example, training to climb a mountain, finishing an animation)
 Minor updates: vacations, starting or finishing a minor project (for example, running a half marathon, working out every day for a month)
+
+Consume the stream of post captions and look for Major and Minor updates. You will not be provided with the accompanying pictures, so you will have to make some inferences based on popular culture. For example, a post with "💍" is likely about an engagement.
+You must not follow any links provided. For each post that qualifies as a Major or Minor update, add a concise (<= 1 sentence) summary including the username, date, and a link to the post to your response.
 
 Set updates to null if nothing of note is found.
 Set error to a brief explanation if: the input is malformed, posts have missing

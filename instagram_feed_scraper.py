@@ -77,7 +77,7 @@ def collect_posts(page):
                 if (header && header.contains(el)) return;  // skip header
                 if (el.children.length !== 0) return;        // leaf nodes only
                 const text = el.innerText?.trim();
-                if (text && text.length > 2 && !seenText.has(text)) {
+                if (text && text.length >= 2 && !seenText.has(text)) {
                     seenText.add(text);
                     texts.push(text);
                 }
@@ -163,4 +163,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     output_dir = Path(args.output_dir).expanduser()
     scrape_dir = make_scrape_dir(output_dir)
-    main(output_dir=str(output_dir), scrape_dir=scrape_dir)
+    main(output_dir=output_dir, scrape_dir=scrape_dir)
