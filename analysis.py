@@ -1,4 +1,9 @@
-import anthropic
+
+# Load anthropic API key environment variable
+from dotenv import load_dotenv
+load_dotenv()
+
+from anthropic import Anthropic
 import json
 import sys
 from pydantic import BaseModel
@@ -25,8 +30,8 @@ def find_life_events(posts) -> Response:
 
     combined = combine_posts(posts)
 
-    response = client.messages.parse(
-        model="claude-haiku-3",
+    response = client.messages.create(
+        model="claude-haiku-4-5",
         max_tokens=2048,
         system="""You analyze a personal Instagram feed to identify important life updates. Here are some examples of life updates.
 
@@ -38,68 +43,51 @@ You must not follow any links provided. For each post that qualifies as a Major 
 
 Set updates to null if nothing of note is found.
 Set error to a brief explanation if: the input is malformed, posts have missing
-timestamps or usernames, text is missing or truncated, or you cannot meaningfully analyze the content.""",
+timestamps or usernames, text is missing or truncated, or you cannot meaningfully analyze the content. If you return an error, set updates to null.""",
         messages=[{
             "role": "user",
             "content": f"Analyze these posts:\n\n{combined}"
         }],
-        output_format=Response,
+        tools=[{
+            "name": "structured_output",
+            "description": "Return structured data",
+            "input_schema": Response.model_json_schema()
+        }],
+        tool_choice={"type": "tool", "name": "structured_output"}
     )
 
-    return response.parsed_output
+    return Response(**response.content[0].input)
 
 
 def write_updates(response: Response):
     if response.error:
-        print(f"Error: {response.error}")
+        raise ValueError(f"Claude returned an error: {response.error}")
 
     if not response.updates:
         print("Nothing of note.")
+        open("major_updates.json", "w").close()
+        open("minor_updates.json", "w").close()
         return
 
     major = [u for u in response.updates if u.kind == UpdateKind.MAJOR]
     minor = [u for u in response.updates if u.kind == UpdateKind.MINOR]
 
-    if major:
-        with open("major_updates.txt", "w") as f:
-            f.write("\n\n".join(u.text for u in major))
-        print(f"Wrote {len(major)} major update(s) to major_updates.txt")
+    with open("major_updates.json", "w") as f:
+        json.dump([u.model_dump(mode="json") for u in major], f, indent=2)
+    print(f"Wrote {len(major)} major update(s) to major_updates.json")
 
-    if minor:
-        with open("minor_updates.txt", "w") as f:
-            f.write("\n\n".join(u.text for u in minor))
-        print(f"Wrote {len(minor)} minor update(s) to minor_updates.txt")
+    with open("minor_updates.json", "w") as f:
+        json.dump([u.model_dump(mode="json") for u in minor], f, indent=2)
+    print(f"Wrote {len(minor)} minor update(s) to minor_updates.json")
 
 def main(json_path):
     with open(json_path, "r") as f:
         posts = json.load(f)
-    find_life_events(posts)
+    response = find_life_events(posts)
+    write_updates(response)
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage: python script.py <path_to_json>")
         sys.exit(1)
     main(sys.argv[1])
-
-
-def write_updates(response: Response):
-    if response.error:
-        print(f"Error: {response.error}")
-        return
-
-    if not response.updates:
-        print("Nothing of note.")
-        return
-
-    major = [u for u in response.updates if u.kind == UpdateKind.MAJOR]
-    minor = [u for u in response.updates if u.kind == UpdateKind.MINOR]
-
-    if major:
-        with open("major_updates.txt", "w") as f:
-            f.write("\n\n".join(u.text for u in major))
-        print(f"Wrote {len(major)} major update(s) to major_updates.txt")
-
-    if minor:
-        with open("minor_updates.txt", "w") as f:
-            f.write("\n\n".join(u.text for u in minor))
-        print(f"Wrote {len(minor)} minor update(s) to minor_updates.txt")

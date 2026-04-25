@@ -1,10 +1,11 @@
 import json
 from pathlib import Path
 from datetime import datetime
+from pydantic import BaseModel
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
-
+from datetime import date
 
 
 def save_json(data, path):
@@ -28,12 +29,13 @@ class UpdateKind(Enum):
     MINOR = "minor"
     MAJOR = "major"
 
-@dataclass
-class Update:
+class Update(BaseModel):
     kind: UpdateKind
+    date: date
+    username: str
+    post_link: str
     text: str
 
-@dataclass 
-class Response:
-    updates: Optional[list[Update]]
+class Response(BaseModel):
+    updates: Optional[list[Update]] = None
     error: Optional[str] = None
