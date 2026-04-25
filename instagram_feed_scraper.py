@@ -16,9 +16,9 @@ import json
 import time
 import argparse
 from pathlib import Path
-from datetime import datetime
 from playwright.sync_api import sync_playwright
 import random
+from lib import save_json, load_json, make_scrape_dir
 
 STATE_FILE = "ig_session.json"
 
@@ -34,12 +34,6 @@ def human_sleep_ms(base_ms: int, jitter_ms: int = 500):
 def save_json(data, path):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
-
-def make_output_path(output_dir: str) -> Path:
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    scrape_dir = Path(output_dir) / "scrapes" / timestamp
-    scrape_dir.mkdir(parents=True, exist_ok=True)
-    return scrape_dir / "instagram_feed.json"
 
 def load_feed(page):
     page.goto("https://www.instagram.com/", wait_until="domcontentloaded")
@@ -118,17 +112,11 @@ def collect_posts(page):
     }
     """)
     return posts
-
-def main():
-    parser = argparse.ArgumentParser(description="Scrape your Instagram feed.")
-    parser.add_argument("--output-dir", required=True, help="Root directory for scrape output.")
-    args = parser.parse_args()
-
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)  # ensure root exists for session file
+def main(output_dir: Path, scrape_dir: Path):
+    scrape_path = scrape_dir / "instagram_feed.json"
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     state_file = output_dir / "ig_session.json"
-    output_path = make_output_path(args.output_dir)
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False)
@@ -164,10 +152,15 @@ def main():
             page.mouse.wheel(0, perturb_ms(3000))
             human_sleep_ms(WAIT_BETWEEN_SCROLLS_MS)
 
-        save_json(all_posts, output_path)
-        print(f"Saved {len(all_posts)} posts to {output_path}")
+        save_json(all_posts, scrape_path)
+        print(f"Saved {len(all_posts)} posts to {scrape_path}")
         browser.close()
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Scrape your Instagram feed.")
+    parser.add_argument("--output-dir", required=True, help="Root directory, e.g. ~/tmp/instagram_notifier")
+    args = parser.parse_args()
+    output_dir = Path(args.output_dir).expanduser()
+    scrape_dir = make_scrape_dir(output_dir)
+    main(output_dir=str(output_dir), scrape_dir=scrape_dir)
