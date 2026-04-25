@@ -20,7 +20,8 @@ You must not follow any links provided. For each post that qualifies as a Major 
 
 Set updates to null if nothing of note is found.
 Set error to a brief explanation if: the input is malformed, posts have missing
-timestamps or usernames, text is missing or truncated, or you cannot meaningfully analyze the content. If you return an error, set updates to null."""
+timestamps or usernames, text is missing or truncated, or you cannot meaningfully analyze the content. 
+Only return an error if there is truly a problem--do not return an error if nothing of note is found."""
 
 def find_life_events(posts) -> Response:
     client = Anthropic()

@@ -10,9 +10,11 @@
 import argparse
 from pathlib import Path
 from datetime import datetime
+import json
 
 from instagram_feed_scraper import main as run_scraper
 from instagram_feed_second_pass import main as run_second_pass
+from analysis import main as run_analysis
 from lib import save_json, load_json, make_scrape_dir
 
 def main():
@@ -30,6 +32,11 @@ def main():
     print("\n=== Step 2: Enriching posts ===")
     run_second_pass(scrape_dir=scrape_dir, session_file=session_file)
 
+    print("\n=== Step 3: Analyzing posts ===")
+    run_analysis(
+        json_path=scrape_dir / "instagram_feed_second_pass.json",
+        output_dir=str(scrape_dir)
+    )
 
 if __name__ == "__main__":
     main()

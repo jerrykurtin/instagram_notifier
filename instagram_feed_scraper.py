@@ -22,7 +22,7 @@ from lib import save_json, load_json, make_scrape_dir
 
 STATE_FILE = "ig_session.json"
 
-MAX_SCROLLS = 5
+MAX_SCROLLS = 2
 WAIT_BETWEEN_SCROLLS_MS = 5000
 
 def perturb_ms(ms: int, max_jitter: int = 500) -> int:
