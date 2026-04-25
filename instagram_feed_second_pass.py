@@ -26,51 +26,10 @@ def needs_second_pass(post):
 
 
 def extract_post_text(page):
-    # Click all "more" expanders before reading text
-    try:
-        more_buttons = page.locator("article span", has_text="more").all()
-        for btn in more_buttons:
-            if btn.inner_text().strip().lower() == "more":
-                btn.click()
-                page.wait_for_timeout(500)
-    except Exception as e:
-        print(f"  [warn] Could not click 'more': {e}")
-
-    return page.evaluate("""
-    () => {
-        const results = [];
-        const seenText = new Set();
-
-        const article = document.querySelector("article");
-        if (!article) return results;
-
-        const header = article.querySelector("header");
-
-        article.querySelectorAll("span, div").forEach(el => {
-            if (header && header.contains(el)) return;
-            if (el.children.length !== 0) return;
-
-            const text = el.innerText?.trim();
-            if (text && text.length > 2 && !seenText.has(text)) {
-                seenText.add(text);
-                results.push(text);
-            }
-        });
-
-        if (results.length === 0) {
-            const imgs = article.querySelectorAll("img");
-            for (const img of imgs) {
-                const alt = img.alt?.trim();
-                if (alt && alt.length > 10) {
-                    results.push(alt);
-                    break;
-                }
-            }
-        }
-
-        return results;
-    }
+    og_desc = page.evaluate("""
+        () => document.querySelector('meta[property="og:description"]')?.content ?? null
     """)
+    return [og_desc] if og_desc else []
 
 
 def main():
@@ -117,7 +76,11 @@ def main():
 
             try:
                 page.goto(url, wait_until="domcontentloaded")
-                page.wait_for_timeout(5000)
+                page.wait_for_timeout(3000)
+
+                # Dump the live DOM to a file so you can inspect it
+                with open("debug_dom.html", "w", encoding="utf-8") as f:
+                    f.write(page.content())
 
                 full_texts = extract_post_text(page)
 
@@ -127,7 +90,6 @@ def main():
             except Exception as e:
                 print(f"Failed on {url}: {e}")
                 enriched_posts.append(post)
-            break
 
         save_json(enriched_posts, output_path)
 
