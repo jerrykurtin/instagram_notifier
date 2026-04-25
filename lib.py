@@ -33,7 +33,7 @@ class Update(BaseModel):
     kind: UpdateKind
     date: date
     username: str
-    post_link: str
+    post_url: str
     text: str
 
 class Response(BaseModel):
