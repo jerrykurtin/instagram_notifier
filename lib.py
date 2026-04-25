@@ -1,6 +1,10 @@
 import json
 from pathlib import Path
 from datetime import datetime
+from dataclasses import dataclass
+from enum import Enum
+from typing import Optional
+
 
 
 def save_json(data, path):
@@ -18,3 +22,18 @@ def make_scrape_dir(output_dir: Path) -> Path:
     scrape_dir = output_dir / "scrapes" / timestamp
     scrape_dir.mkdir(parents=True, exist_ok=True)
     return scrape_dir
+
+"""Claude structured response"""
+class UpdateKind(Enum):
+    MINOR = "minor"
+    MAJOR = "major"
+
+@dataclass
+class Update:
+    kind: UpdateKind
+    text: str
+
+@dataclass 
+class Response:
+    updates: Optional[list[Update]]
+    error: Optional[str] = None
