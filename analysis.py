@@ -7,24 +7,7 @@ from anthropic import Anthropic
 import json
 import sys
 import os
-from pydantic import BaseModel
-from lib import UpdateKind, Update, Response
-
-# def get_post_text(post):
-#     """Join texts into one string"""
-#     texts = post.get("texts", [])
-#     joined = " ".join(texts).strip()
-#     return joined
-
-# def combine_posts(posts):
-#     post_blocks = []
-#     for i, post in enumerate(posts):
-#         post_blocks.append(
-#             f"[Post {i+1} | {post['timestamp'][:10]} | @{post['username']}]\n"
-#             f"{get_post_text(post)}"
-#         )
-    
-#     return "\n\n---\n\n".join(post_blocks)
+from lib import UpdateKind, Response
 
 system_prompt = """You analyze a personal Instagram feed to identify important life updates. Here are some examples of life updates.
 
