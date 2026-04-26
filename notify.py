@@ -28,6 +28,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from lib import Update, UpdateKind
+
 
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 465
@@ -43,20 +45,58 @@ def load_json_file(path: Path) -> list:
     return data if isinstance(data, list) else [data]
 
 
-def send_email(email: str, app_password: str, major_updates: list, minor_updates: list) -> None:
-    subject = f"Instagram Notifier — {len(major_updates)} major, {len(minor_updates)} minor update(s)"
+def parse_updates(raw: list) -> list[Update]:
+    """Parse a list of raw dicts into Update objects, skipping malformed entries."""
+    updates = []
+    for item in raw:
+        try:
+            updates.append(Update(**item))
+        except Exception as e:
+            print(f"Warning: skipping malformed update {item}: {e}", file=sys.stderr)
+    return updates
 
-    plain = (
-        f"=== Major Updates ===\n{json.dumps(major_updates, indent=2)}"
-        f"\n\n=== Minor Updates ===\n{json.dumps(minor_updates, indent=2)}"
+
+def format_update_plain(u: Update) -> str:
+    return f"• {u.date}  @{u.username}  {u.post_url}\n  {u.text}"
+
+
+def format_update_html(u: Update) -> str:
+    return (
+        f'''<li style="margin-bottom:12px">'''
+        f'''<span style="color:#888;font-size:0.9em">{u.date}</span> '''
+        f'''<strong>@{u.username}</strong> <a href="{u.post_url}" style="color:#888;font-size:0.9em;text-decoration:none">see post →</a><br>'''
+        f'''{u.text}'''
+        f'''</li>'''
     )
 
+
+def send_email(email: str, app_password: str, major_updates: list, minor_updates: list) -> None:
+    major = sorted(parse_updates(major_updates), key=lambda u: u.date)
+    minor = sorted(parse_updates(minor_updates), key=lambda u: u.date)
+
+    subject = f"Instagram Notifier — {len(major)} major, {len(minor)} minor update(s)"
+
+    plain_sections = []
+    if major:
+        plain_sections.append("=== Major Updates ===\n" + "\n".join(format_update_plain(u) for u in major))
+    if minor:
+        plain_sections.append("=== Minor Updates ===\n" + "\n".join(format_update_plain(u) for u in minor))
+    plain = "\n\n".join(plain_sections)
+
+    def html_section(title, updates):
+        if not updates:
+            return ""
+        items = "\n".join(format_update_html(u) for u in updates)
+        return f'''
+        <h2 style="font-family:sans-serif;border-bottom:2px solid #eee;padding-bottom:6px">{title} ({len(updates)})</h2>
+        <ul style="list-style:none;padding:0;font-family:sans-serif;line-height:1.6">
+        {items}
+        </ul>'''
+
     html = f"""
-    <html><body>
-    <h2>Major Updates ({len(major_updates)})</h2>
-    <pre style="background:#f4f4f4;padding:12px;border-radius:6px">{json.dumps(major_updates, indent=2)}</pre>
-    <h2>Minor Updates ({len(minor_updates)})</h2>
-    <pre style="background:#f4f4f4;padding:12px;border-radius:6px">{json.dumps(minor_updates, indent=2)}</pre>
+    <html><body style="max-width:600px;margin:auto;padding:24px;color:#1a1a1a">
+    {html_section("Major Updates", major)}
+    {html_section("Minor Updates", minor)}
     </body></html>
     """
 
@@ -141,6 +181,17 @@ def main(root_dir: str) -> None:
     #     print("No major updates found.", file=sys.stderr)
     #     finalize()
     #     return
+
+    # -------------------------------------------------------------------------
+    # TEST DATA — delete this block to disable
+    all_major_updates += [
+        {"kind": "major", "date": "2026-04-24", "username": "testaccount", "post_url": "https://www.instagram.com/p/abc123/", "text": "Just dropped a new collection 🔥 Check the link in bio for early access before it sells out!"},
+    ]
+    all_minor_updates += [
+        {"kind": "minor", "date": "2026-04-23", "username": "anotheraccount", "post_url": "https://www.instagram.com/p/def456/", "text": "Weekend vibes ☀️"},
+        {"kind": "minor", "date": "2026-04-25", "username": "thirdaccount",  "post_url": "https://www.instagram.com/p/ghi789/", "text": "grateful for every single one of you 🙏 we hit 100k today"},
+    ]
+    # -------------------------------------------------------------------------
 
     if not all_major_updates:
         print("No major updates found.", file=sys.stderr)

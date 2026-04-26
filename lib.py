@@ -10,6 +10,10 @@ from datetime import date
 MAX_SCROLLS = 2
 WAIT_BETWEEN_SCROLLS_MS = 5000
 
+# AI settings
+MODEL="claude-haiku-4-5"
+MAX_RESPONSE_TOKENS=4096
+
 def save_json(data, path):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)

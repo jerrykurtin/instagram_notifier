@@ -7,7 +7,11 @@ from anthropic import Anthropic
 import json
 import sys
 import os
-from lib import UpdateKind, Response
+from lib import UpdateKind, Response, MODEL, MAX_RESPONSE_TOKENS
+
+# The AI really overindexes on the examples given. I'm leaving out for now, but it would be nice to add in the future
+examples = """For example, a post with "💍" may be about an engagement, but a post with "In love with us!" or even just "❤️" could be anything, but it's probably not an engagement so it wouldn't be a life update.
+"""
 
 system_prompt = """You analyze a personal Instagram feed to identify important life updates. Here are some examples of life updates.
 
@@ -15,8 +19,8 @@ Major updates: engagements, weddings, breakups, kids, pregnancy, deaths, major s
 Minor updates: vacations, starting or finishing a minor project (for example, running a half marathon, working out every day for a month)
 
 Consume the stream of post captions and look for Major and Minor updates. You will not be provided with the accompanying pictures, so you will have to make some inferences based on popular culture. 
-For example, a post with "💍" is likely about an engagement. A post with "In love with us!" could be anything, so it wouldn't be a life update.
-You must not follow any links provided. For each post that qualifies as a Major or Minor update, add a concise (<= 1 sentence) summary. Copy the `username` and `post_url` fields from the source json exactly, and generate the date from the `timestamp` field.
+If you're inferring on a life event, specify as such in your response. When the caption is short enough to include with your summary, quote it as such.
+You must not follow any links provided. For each post that qualifies as a Major or Minor update, add a concise yet descriptive (<= 1 sentence) summary. Copy the `username` and `post_url` fields from the source json exactly, and generate the date from the `timestamp` field.
 
 Set updates to null if nothing of note is found.
 Set error to a brief explanation if: the input is malformed, posts have missing
@@ -27,8 +31,8 @@ def find_life_events(posts) -> Response:
     client = Anthropic()
 
     response = client.messages.create(
-        model="claude-haiku-4-5",
-        max_tokens=2048,
+        model=MODEL,
+        max_tokens=MAX_RESPONSE_TOKENS,
         system=system_prompt,
         messages=[{
             "role": "user",
@@ -89,7 +93,7 @@ def main(json_path, output_dir: str = "."):
     write_updates(response, output_dir)
 
 if __name__ == "__main__":
-    if len(sys.argv) not in (2, 3):
-        print("Usage: python script.py <path_to_json> [output_dir]")
+    if len(sys.argv) != 3:
+        print(f"Usage: {sys.argv[0]} <path_to_json> <output_dir>")
         sys.exit(1)
-    main(sys.argv[1], sys.argv[2] if len(sys.argv) == 3 else ".")
+    main(sys.argv[1], sys.argv[2])
