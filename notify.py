@@ -1,20 +1,36 @@
 #!/usr/bin/env python3
 """
 Recursively searches a directory for scrape folders containing major_updates.json
-or minor_updates.json, combines their contents, and writes them to stdout.
+or minor_updates.json, combines their contents, and sends an email notification.
 
 Crash-resilience strategy:
   - .visited  is touched immediately before reading a directory, so a crash
               mid-read won't cause double-processing on re-run.
-  - .processed is touched only after stdout output is complete, confirming the
-              full pipeline succeeded for that directory.
+  - .processed is touched only after the email is sent successfully, confirming
+              the full pipeline succeeded for that directory.
   - On skip check, only .processed is consulted — a directory that has .visited
     but not .processed was interrupted and will be retried.
+
+Credentials are loaded from a .env file in the working directory:
+  NOTIFY_EMAIL        Gmail address to send from (and to)
+  NOTIFY_APP_PASSWORD Gmail App Password (not your regular password)
+                      Generate at: https://myaccount.google.com/apppasswords
 """
 
 import json
+import os
+import smtplib
+import ssl
 import sys
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from pathlib import Path
+
+from dotenv import load_dotenv
+
+
+SMTP_HOST = "smtp.gmail.com"
+SMTP_PORT = 465
 
 
 def load_json_file(path: Path) -> list:
@@ -27,7 +43,50 @@ def load_json_file(path: Path) -> list:
     return data if isinstance(data, list) else [data]
 
 
+def send_email(email: str, app_password: str, major_updates: list, minor_updates: list) -> None:
+    subject = f"Instagram Notifier — {len(major_updates)} major, {len(minor_updates)} minor update(s)"
+
+    plain = (
+        f"=== Major Updates ===\n{json.dumps(major_updates, indent=2)}"
+        f"\n\n=== Minor Updates ===\n{json.dumps(minor_updates, indent=2)}"
+    )
+
+    html = f"""
+    <html><body>
+    <h2>Major Updates ({len(major_updates)})</h2>
+    <pre style="background:#f4f4f4;padding:12px;border-radius:6px">{json.dumps(major_updates, indent=2)}</pre>
+    <h2>Minor Updates ({len(minor_updates)})</h2>
+    <pre style="background:#f4f4f4;padding:12px;border-radius:6px">{json.dumps(minor_updates, indent=2)}</pre>
+    </body></html>
+    """
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = email
+    msg["To"] = email
+    msg.attach(MIMEText(plain, "plain"))
+    msg.attach(MIMEText(html, "html"))
+
+    context = ssl.create_default_context()
+    with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=context) as server:
+        server.login(email, app_password)
+        server.sendmail(email, email, msg.as_string())
+
+    print(f"Email sent to {email}", file=sys.stderr)
+
+
 def main(root_dir: str) -> None:
+    load_dotenv()
+
+    email = os.environ.get("NOTIFY_EMAIL")
+    app_password = os.environ.get("NOTIFY_APP_PASSWORD")
+    if not email or not app_password:
+        print(
+            "Error: NOTIFY_EMAIL and NOTIFY_APP_PASSWORD environment variables must be set.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     root = Path(root_dir)
     if not root.is_dir():
         print(f"Error: '{root_dir}' is not a valid directory.", file=sys.stderr)
@@ -79,16 +138,18 @@ def main(root_dir: str) -> None:
 
     # In the future: to reduce noise, we could email only on major updates
     # if not all_major_updates:
-    #     print("No major updates found.")
+    #     print("No major updates found.", file=sys.stderr)
+    #     finalize()
     #     return
 
-    print("=== Major Updates ===")
-    print(json.dumps(all_major_updates, indent=2))
+    if not all_major_updates:
+        print("No major updates found.", file=sys.stderr)
+        finalize()
+        return
 
-    print("\n=== Minor Updates ===")
-    print(json.dumps(all_minor_updates, indent=2))
+    send_email(email, app_password, all_major_updates, all_minor_updates)
 
-    # stdout output is complete — mark each directory as fully processed
+    # Email sent successfully — mark each directory as fully processed
     finalize()
 
 
