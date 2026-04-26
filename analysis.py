@@ -23,9 +23,9 @@ If you're inferring on a life event, specify as such in your response. When the 
 You must not follow any links provided. For each post that qualifies as a Major or Minor update, add a concise yet descriptive (<= 1 sentence) summary. Copy the `username` and `post_url` fields from the source json exactly, and generate the date from the `timestamp` field.
 
 Set updates to null if nothing of note is found.
-Set error to a brief explanation if: the input is malformed, posts have missing
-timestamps or usernames, text is missing or truncated, or you cannot meaningfully analyze the content. 
-Only return an error if there is truly a problem--do not return an error if nothing of note is found."""
+Set error to a brief explanation if  you cannot meaningfully analyze the content. For example, there are 0 posts to analyze, or the input is malformed.  
+Only return an error if there is truly a problem--do not return an error if nothing of note is found or a post looks incomplete.
+If a post is missing timestamps or usernames, or the text is clearly missing or truncated, return this as a minor update with the caption DATA QUALITY ISSUE and describe the issue. DO NOT return this as an error. """
 
 def find_life_events(posts) -> Response:
     client = Anthropic()

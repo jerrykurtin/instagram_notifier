@@ -163,7 +163,7 @@ def send_email(email: str, app_password: str, major_updates: list, minor_updates
         server.sendmail(email, email, msg.as_string())
  
     print(f"Email sent to {email}", file=sys.stderr)
-    
+
 
 def main(root_dir: str) -> None:
     load_dotenv()
@@ -233,18 +233,18 @@ def main(root_dir: str) -> None:
     #     return
 
     # -------------------------------------------------------------------------
-    # TEST DATA — delete this block to disable
-    all_major_updates += [
-        {"kind": "major", "date": "2026-04-24", "username": "testaccount", "post_url": "https://www.instagram.com/p/abc123/", "text": "Just dropped a new collection 🔥 Check the link in bio for early access before it sells out!"},
-    ]
-    all_minor_updates += [
-        {"kind": "minor", "date": "2026-04-23", "username": "anotheraccount", "post_url": "https://www.instagram.com/p/def456/", "text": "Weekend vibes ☀️"},
-        {"kind": "minor", "date": "2026-04-25", "username": "thirdaccount",  "post_url": "https://www.instagram.com/p/ghi789/", "text": "grateful for every single one of you 🙏 we hit 100k today"},
-    ]
+    # # TEST DATA — delete this block to disable
+    # all_major_updates += [
+    #     {"kind": "major", "date": "2026-04-24", "username": "testaccount", "post_url": "https://www.instagram.com/p/abc123/", "text": "Just dropped a new collection 🔥 Check the link in bio for early access before it sells out!"},
+    # ]
+    # all_minor_updates += [
+    #     {"kind": "minor", "date": "2026-04-23", "username": "anotheraccount", "post_url": "https://www.instagram.com/p/def456/", "text": "Weekend vibes ☀️"},
+    #     {"kind": "minor", "date": "2026-04-25", "username": "thirdaccount",  "post_url": "https://www.instagram.com/p/ghi789/", "text": "grateful for every single one of you 🙏 we hit 100k today"},
+    # ]
     # -------------------------------------------------------------------------
 
-    if not all_major_updates:
-        print("No major updates found.", file=sys.stderr)
+    if not all_major_updates and not all_minor_updates:
+        print("No updates found.", file=sys.stderr)
         finalize()
         return
 

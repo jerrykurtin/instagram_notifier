@@ -34,7 +34,6 @@ def save_json(data, path):
 
 def load_feed(page):
     page.goto("https://www.instagram.com/", wait_until="domcontentloaded")
-    human_sleep_ms(WAIT_BETWEEN_SCROLLS_MS)
 def collect_posts(page):
     posts = page.evaluate("""
     () => {

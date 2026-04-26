@@ -67,7 +67,6 @@ def main(scrape_dir: Path, session_file: Path):
 
             try:
                 page.goto(url, wait_until="domcontentloaded")
-                page.wait_for_timeout(3000)
 
                 full_texts = extract_post_text(page)
 

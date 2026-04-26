@@ -9,13 +9,13 @@
 
 import argparse
 from pathlib import Path
-from datetime import datetime
-import json
+import time
 
 from instagram_feed_scraper import main as run_scraper
 from instagram_feed_second_pass import main as run_second_pass
 from analysis import main as run_analysis
-from lib import save_json, load_json, make_scrape_dir
+from notify import main as notify
+from lib import make_scrape_dir, TIME_BETWEEN_SCRAPES_MIN, TIME_BETWEEN_NOTIFICATIONS_MIN
 
 def main():
     parser = argparse.ArgumentParser(description="Run full Instagram scrape pipeline.")
@@ -24,19 +24,32 @@ def main():
 
     output_dir = Path(args.output_dir).expanduser()
     session_file = output_dir / "ig_session.json"
-    scrape_dir = make_scrape_dir(output_dir)
 
-    print("=== Step 1: Scraping feed ===")
-    run_scraper(output_dir=output_dir, scrape_dir=scrape_dir)
+    last_notification_time = None
 
-    print("\n=== Step 2: Enriching posts ===")
-    run_second_pass(scrape_dir=scrape_dir, session_file=session_file)
+    while True:
+        scrape_dir = make_scrape_dir(output_dir)
+        now = time.time()
 
-    print("\n=== Step 3: Analyzing posts ===")
-    run_analysis(
-        json_path=scrape_dir / "instagram_feed_second_pass.json",
-        output_dir=str(scrape_dir)
-    )
+        print("=== Step 1: Scraping feed ===")
+        run_scraper(output_dir=output_dir, scrape_dir=scrape_dir)
+
+        print("\n=== Step 2: Enriching posts ===")
+        run_second_pass(scrape_dir=scrape_dir, session_file=session_file)
+
+        print("\n=== Step 3: Analyzing posts ===")
+        run_analysis(
+            json_path=scrape_dir / "instagram_feed_second_pass.json",
+            output_dir=str(scrape_dir)
+        )
+
+        if last_notification_time is None or (now - last_notification_time) >= TIME_BETWEEN_NOTIFICATIONS_MIN * 60:
+            print("\n=== Step 4: Sending notifications ===")
+            notify(root_dir=output_dir)
+            last_notification_time = now
+
+        print(f"\n=== Sleeping {TIME_BETWEEN_SCRAPES_MIN} minutes until next scrape ===")
+        time.sleep(TIME_BETWEEN_SCRAPES_MIN * 60)
 
 if __name__ == "__main__":
     main()
