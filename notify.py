@@ -115,18 +115,18 @@ def summarize_updates(major: list[Update], minor: list[Update]) -> str:
 def send_email(email: str, app_password: str, major_updates: list, minor_updates: list) -> None:
     major = sorted(parse_updates(major_updates), key=lambda u: u.date)
     minor = sorted(parse_updates(minor_updates), key=lambda u: u.date)
-
+ 
     summary = summarize_updates(major, minor)
-
+ 
     subject = f"Instagram Notifier — {len(major)} major, {len(minor)} minor update(s)"
-
+ 
     plain_sections = [summary]
     if major:
         plain_sections.append("=== Major Updates ===\n" + "\n".join(format_update_plain(u) for u in major))
     if minor:
         plain_sections.append("=== Minor Updates ===\n" + "\n".join(format_update_plain(u) for u in minor))
     plain = "\n\n".join(plain_sections)
-
+ 
     def html_section(title, updates):
         if not updates:
             return ""
@@ -136,29 +136,34 @@ def send_email(email: str, app_password: str, major_updates: list, minor_updates
         <ul style="list-style:none;padding:0;font-family:sans-serif;line-height:1.6">
         {items}
         </ul>'''
-
+ 
+    # Hidden preheader: shown in notification preview instead of email body text.
+    # The &zwnj; padding pushes any real content out of the preview window.
+    preheader = f'''<div style="display:none;max-height:0;overflow:hidden">{summary}{"&nbsp;&zwnj;" * 60}</div>'''
+ 
     html = f"""
     <html><body style="max-width:600px;margin:auto;padding:24px;color:#1a1a1a">
+    {preheader}
     <p style="font-family:sans-serif;font-size:1em;line-height:1.6;border-left:3px solid #ccc;padding-left:12px;color:#444">{summary}</p>
     {html_section("Major Updates", major)}
     {html_section("Minor Updates", minor)}
     </body></html>
     """
-
+ 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = email
     msg["To"] = email
     msg.attach(MIMEText(plain, "plain"))
     msg.attach(MIMEText(html, "html"))
-
+ 
     context = ssl.create_default_context()
     with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=context) as server:
         server.login(email, app_password)
         server.sendmail(email, email, msg.as_string())
-
+ 
     print(f"Email sent to {email}", file=sys.stderr)
-
+    
 
 def main(root_dir: str) -> None:
     load_dotenv()
