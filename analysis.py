@@ -22,6 +22,8 @@ Consume the stream of post captions and look for Major and Minor updates. You wi
 If you're inferring on a life event, specify as such in your response. When the caption is short enough to include with your summary, quote it as such.
 You must not follow any links provided. For each post that qualifies as a Major or Minor update, add a concise yet descriptive (<= 1 sentence) summary. Copy the `username` and `post_url` fields from the source json exactly, and generate the date from the `timestamp` field.
 
+Filter out posts from celebrities. You can safely assume that anyone with over 50k followers is a celebrity.
+
 Set updates to null if nothing of note is found.
 Set error to a brief explanation if  you cannot meaningfully analyze the content. For example, there are 0 posts to analyze, or the input is malformed.  
 Only return an error if there is truly a problem--do not return an error if nothing of note is found or a post looks incomplete.

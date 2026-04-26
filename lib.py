@@ -7,17 +7,17 @@ from enum import Enum
 from typing import Optional
 from datetime import date
 
-HEADLESS = True # Only set to false for debugging
+HEADLESS = True # Only set to false for debugging or initially logging in
 VERBOSE = False
 MAX_SCROLLS = 10
 WAIT_BETWEEN_SCROLLS_MS = 1000
 
 # AI settings
-MODEL="claude-haiku-4-5"
+MODEL="claude-sonnet-4-6"
 MAX_RESPONSE_TOKENS=4096
 
-TIME_BETWEEN_SCRAPES_MIN = 1 # 144 = 10x per day
-TIME_BETWEEN_NOTIFICATIONS_MIN = 1 # 1440 = 1 day
+TIME_BETWEEN_SCRAPES_MIN = 144 # 144 = 10x per day
+TIME_BETWEEN_NOTIFICATIONS_MIN = 144 # 1440 = 1 day
 
 def save_json(data, path):
     with open(path, "w", encoding="utf-8") as f:

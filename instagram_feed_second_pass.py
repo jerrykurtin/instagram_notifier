@@ -22,7 +22,7 @@ def extract_post_text(page):
     return [og_desc] if og_desc else []
 
 
-SKIP_LABELS = {"suggested for you", "ad"}
+SKIP_LABELS = {"suggested for you", "ad", "follow"}
 
 def is_suggested(post):
     return any(t.strip().lower() in SKIP_LABELS for t in post.get("texts", []))
