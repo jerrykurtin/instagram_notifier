@@ -7,6 +7,8 @@ from enum import Enum
 from typing import Optional
 from datetime import date
 
+HEADLESS = True # Only set to false for debugging
+VERBOSE = False
 MAX_SCROLLS = 10
 WAIT_BETWEEN_SCROLLS_MS = 1000
 

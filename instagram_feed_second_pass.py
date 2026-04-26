@@ -7,7 +7,7 @@
 import argparse
 from pathlib import Path
 from playwright.sync_api import sync_playwright
-from lib import save_json, load_json
+from lib import save_json, load_json, HEADLESS, VERBOSE
 
 
 def needs_second_pass(post):
@@ -41,7 +41,7 @@ def main(scrape_dir: Path, session_file: Path):
     posts = load_json(input_path)
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(headless=HEADLESS)
 
         context = browser.new_context(
             storage_state=str(session_file) if session_file.exists() else None
@@ -49,21 +49,26 @@ def main(scrape_dir: Path, session_file: Path):
 
         page = context.new_page()
         updated_count = 0
+        skipped_count = 0
         enriched_posts = []
 
         for i, post in enumerate(posts):
             url = post.get("post_url")
 
             if is_suggested(post):
-                print(f"[{i+1}/{len(posts)}] Skipping suggested post")
+                skipped_count += 1
+                if VERBOSE:
+                    print(f"[{i+1}/{len(posts)}] Skipping suggested post")
                 continue
 
             if not url or not needs_second_pass(post):
                 enriched_posts.append(post)
-                print(f"[{i+1}/{len(posts)}] Post doesn't need a second pass")
+                if VERBOSE:
+                    print(f"[{i+1}/{len(posts)}] Post doesn't need a second pass")
                 continue
 
-            print(f"[{i+1}/{len(posts)}] Re-scraping: {url}")
+            if VERBOSE:
+                print(f"[{i+1}/{len(posts)}] Re-scraping: {url}")
 
             try:
                 page.goto(url, wait_until="domcontentloaded")
@@ -78,7 +83,7 @@ def main(scrape_dir: Path, session_file: Path):
                 enriched_posts.append(post)
 
         save_json(enriched_posts, output_path)
-        print(f"\nDone. Updated {updated_count} posts.")
+        print(f"\nDone. Updated {updated_count} posts. Skipped {skipped_count} posts.")
         print(f"Saved to: {output_path}")
         browser.close()
 

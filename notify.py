@@ -29,7 +29,7 @@ from pathlib import Path
 from anthropic import Anthropic
 from dotenv import load_dotenv
 
-from lib import Update, MODEL
+from lib import Update, MODEL, VERBOSE
 
 
 SMTP_HOST = "smtp.gmail.com"
@@ -39,7 +39,8 @@ SMTP_PORT = 465
 def load_json_file(path: Path) -> list:
     """Load a JSON file, returning an empty list if the file is empty."""
     if path.stat().st_size == 0:
-        print(f"Skipping empty file: {path}", file=sys.stderr)
+        if VERBOSE:
+            print(f"Skipping empty file: {path}", file=sys.stderr)
         return []
     with path.open() as f:
         data = json.load(f)
@@ -162,7 +163,7 @@ def send_email(email: str, app_password: str, major_updates: list, minor_updates
         server.login(email, app_password)
         server.sendmail(email, email, msg.as_string())
  
-    print(f"Email sent to {email}", file=sys.stderr)
+    print(f"Email sent to {email} with {len(major_updates)} major and {len(minor_updates)} minor update(s).", file=sys.stderr)
 
 
 def main(root_dir: str) -> None:
@@ -218,7 +219,8 @@ def main(root_dir: str) -> None:
             all_minor_updates.extend(load_json_file(minor_file))
 
         dirs_to_finalize.append(directory)
-        print(f"Read: {directory}", file=sys.stderr)
+        if VERBOSE:
+            print(f"Read: {directory}", file=sys.stderr)
 
     # Finalize all dirs we read — always, so empty-file dirs aren't retried
     def finalize():

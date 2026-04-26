@@ -18,7 +18,7 @@ import argparse
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 import random
-from lib import save_json, load_json, make_scrape_dir, MAX_SCROLLS, WAIT_BETWEEN_SCROLLS_MS
+from lib import save_json, make_scrape_dir, MAX_SCROLLS, WAIT_BETWEEN_SCROLLS_MS, HEADLESS, VERBOSE
 
 STATE_FILE = "ig_session.json"
 
@@ -115,7 +115,7 @@ def main(output_dir: Path, scrape_dir: Path):
     state_file = output_dir / "ig_session.json"
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(headless=HEADLESS)
 
         if state_file.exists():
             context = browser.new_context(storage_state=str(state_file))
@@ -135,7 +135,8 @@ def main(output_dir: Path, scrape_dir: Path):
         all_posts = []
 
         for i in range(MAX_SCROLLS):
-            print(f"Scanning screen {i+1}/{MAX_SCROLLS}...")
+            if VERBOSE:
+                print(f"Scanning screen {i+1}/{MAX_SCROLLS}...")
 
             posts = collect_posts(page)
 
