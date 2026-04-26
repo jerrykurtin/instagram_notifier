@@ -26,9 +26,10 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
 
+from anthropic import Anthropic
 from dotenv import load_dotenv
 
-from lib import Update, UpdateKind
+from lib import Update, MODEL
 
 
 SMTP_HOST = "smtp.gmail.com"
@@ -70,13 +71,56 @@ def format_update_html(u: Update) -> str:
     )
 
 
+def summarize_updates(major: list[Update], minor: list[Update]) -> str:
+    """Ask Claude for a short headline summary of all updates."""
+    client = Anthropic()
+
+    all_updates = [u.model_dump(mode="json") for u in major + minor]
+
+    system_prompt = (
+            "You are a concise assistant summarizing Instagram activity. "
+            "Given a list of updates (major and minor), write a short (15-30 words) "
+            "plain-text headline summary suitable for the top of an email notification. "
+            "Try to keep it short enough to fit inside the description of a single phone notification. "
+            "Focus on the most notable activity. Do not use markdown or bullet points."
+        )
+
+    response = client.messages.create(
+        model=MODEL,
+        max_tokens=512,
+        system=system_prompt,
+        messages=[{
+            "role": "user",
+            "content": [
+                {
+                    "type": "document",
+                    "source": {
+                        "type": "text",
+                        "media_type": "text/plain",
+                        "data": json.dumps(all_updates, indent=2, default=str),
+                    },
+                    "title": "Instagram Updates",
+                },
+                {
+                    "type": "text",
+                    "text": "Summarize these updates.",
+                }
+            ]
+        }],
+    )
+
+    return response.content[0].text.strip()
+
+
 def send_email(email: str, app_password: str, major_updates: list, minor_updates: list) -> None:
     major = sorted(parse_updates(major_updates), key=lambda u: u.date)
     minor = sorted(parse_updates(minor_updates), key=lambda u: u.date)
 
+    summary = summarize_updates(major, minor)
+
     subject = f"Instagram Notifier — {len(major)} major, {len(minor)} minor update(s)"
 
-    plain_sections = []
+    plain_sections = [summary]
     if major:
         plain_sections.append("=== Major Updates ===\n" + "\n".join(format_update_plain(u) for u in major))
     if minor:
@@ -95,6 +139,7 @@ def send_email(email: str, app_password: str, major_updates: list, minor_updates
 
     html = f"""
     <html><body style="max-width:600px;margin:auto;padding:24px;color:#1a1a1a">
+    <p style="font-family:sans-serif;font-size:1em;line-height:1.6;border-left:3px solid #ccc;padding-left:12px;color:#444">{summary}</p>
     {html_section("Major Updates", major)}
     {html_section("Minor Updates", minor)}
     </body></html>
