@@ -71,9 +71,16 @@ def main(root_dir: str) -> None:
         dirs_to_finalize.append(directory)
         print(f"Read: {directory}", file=sys.stderr)
 
-    if not all_major_updates:
-        print("No major updates found.")
-        return
+    # Finalize all dirs we read — always, so empty-file dirs aren't retried
+    def finalize():
+        for directory in dirs_to_finalize:
+            (directory / ".processed").touch()
+            print(f"Finalized: {directory}", file=sys.stderr)
+
+    # In the future: to reduce noise, we could email only on major updates
+    # if not all_major_updates:
+    #     print("No major updates found.")
+    #     return
 
     print("=== Major Updates ===")
     print(json.dumps(all_major_updates, indent=2))
@@ -81,10 +88,8 @@ def main(root_dir: str) -> None:
     print("\n=== Minor Updates ===")
     print(json.dumps(all_minor_updates, indent=2))
 
-    # stdout output is complete — now mark each directory as fully processed
-    for directory in dirs_to_finalize:
-        (directory / ".processed").touch()
-        print(f"Finalized: {directory}", file=sys.stderr)
+    # stdout output is complete — mark each directory as fully processed
+    finalize()
 
 
 if __name__ == "__main__":
