@@ -7,6 +7,8 @@ from enum import Enum
 from typing import Optional
 from datetime import date
 
+MAX_SCROLLS = 2
+WAIT_BETWEEN_SCROLLS_MS = 5000
 
 def save_json(data, path):
     with open(path, "w", encoding="utf-8") as f:
